@@ -393,7 +393,7 @@ st.set_page_config(
 st.markdown("""
 <style>
 /* 动态渐变背景 */
-body, [data-testid="stAppViewContainer"] {
+[data-testid="stAppViewContainer"] {
     background: linear-gradient(120deg, #1e293b 0%, #232a36 100%) !important;
     animation: gradientBG 10s ease infinite;
     background-size: 200% 200%;
