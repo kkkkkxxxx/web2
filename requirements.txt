@@ -5,14 +5,10 @@ streamlit>=1.25.0
 requests>=2.28.0
 beautifulsoup4>=4.11.0
 numpy>=1.23.0
-uuid
-typing-extensions
-regex
-pypika
 
 # Chroma 向量数据库
 chromadb>=0.4.22
-
+torch>=2.0.0
 # FlagEmbedding (BGE-M3嵌入模型)
 FlagEmbedding==1.3.5
 
@@ -26,4 +22,4 @@ sentence-transformers>=2.2.2
 lxml>=4.9.3
 
 # SentencePiece（注意选用可安装版本）
-sentencepiece>=0.1.99
+sentencepiece==0.1.99
