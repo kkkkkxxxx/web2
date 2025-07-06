@@ -22,4 +22,4 @@ sentence-transformers>=2.2.2
 lxml>=4.9.3
 
 # SentencePiece（注意选用可安装版本）
-sentencepiece==0.1.99
+sentencepiece==0.1.99 --only-binary=:all:
