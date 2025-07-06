@@ -16,7 +16,6 @@ import hashlib
 import hmac
 import base64
 import urllib.parse
-from bs4 import BeautifulSoup
 
 # ==================== 蓝心API签名工具 ====================
 def gen_nonce(length=8):
@@ -196,56 +195,25 @@ class FactChecker:
         except Exception as e:
             st.error(f"搜索本地知识库错误: {str(e)}")
             return []
-    
-    def search_baidu(self, query, num_results=5):
-        headers = {
-            "User-Agent": "Mozilla/5.0"
-        }
-        url = f"https://www.baidu.com/s?wd={urllib.parse.quote(query)}"
-        try:
-            resp = requests.get(url, headers=headers, timeout=10)
-            # st.write(resp.text[:1000])  # 调试用
-            soup = BeautifulSoup(resp.text, "html.parser")
-            results = []
-            for idx, result in enumerate(soup.select(".result, .c-container")[:num_results]):
-                title_tag = result.select_one("h3")
-                title = title_tag.get_text(strip=True) if title_tag else ""
-                snippet_tag = result.select_one(".c-abstract, .c-span-last, .content-right_8Zs40")
-                snippet = snippet_tag.get_text(strip=True) if snippet_tag else ""
-                link_tag = result.select_one("a")
-                link = link_tag["href"] if link_tag else ""
-                results.append({
-                    "title": title,
-                    "url": link,
-                    "snippet": snippet
-                })
-            return results
-        except Exception as e:
-            st.warning(f"百度搜索失败: {e}")
-            return []
-        
+
     def search_evidence(self, claim: str, num_results: int = 5) -> List[Dict[str, str]]:
-        evidence=[]
-        #DuckDuckGo（外网）
         try:
             from duckduckgo_search import DDGS
             ddgs = DDGS(timeout=60)
             results = list(ddgs.text(claim, max_results=num_results))
+            external_evidence = []
             for result in results:
-                evidence.append({
+                external_evidence.append({
                     'title': result.get('title', ''),
                     'url': result.get('href', ''),
                     'snippet': result.get('body', '')
                 })
+            local_evidence = self.search_local_knowledge(claim, top_k=num_results)
+            combined_evidence = external_evidence + local_evidence
+            return combined_evidence
         except Exception as e:
-            st.warning(f"DuckDuckGo搜索失败: {e}")
-        # 国内百度
-        baidu_results = self.search_baidu(claim, num_results=num_results)
-        evidence.extend(baidu_results)
-        # 本地知识库
-        local_evidence = self.search_local_knowledge(claim, top_k=num_results)
-        evidence.extend(local_evidence)
-        return evidence
+            st.error(f"搜索证据错误: {str(e)}")
+            return []
 
     def get_evidence_chunks(self, evidence_docs: List[Dict[str, str]], claim: str, chunk_size: int = 200,
                             chunk_overlap: int = 50, top_k: int = 10) -> List[Dict[str, Any]]:
@@ -389,116 +357,14 @@ st.set_page_config(
     }
 )
 
-# ====== 科技感页面美化CSS ======
+st.title("AI虚假新闻检测器")
 st.markdown("""
-<style>
-/* 动态渐变背景 */
-[data-testid="stAppViewContainer"] {
-    background: linear-gradient(120deg, #1e293b 0%, #232a36 100%) !important;
-    animation: gradientBG 10s ease infinite;
-    background-size: 200% 200%;
-}
-@keyframes gradientBG {
-    0% {background-position: 0% 50%;}
-    50% {background-position: 100% 50%;}
-    100% {background-position: 0% 50%;}
-}
-
-/* 玻璃拟态卡片和内容区，仅保留稳定类名 */
-.stChatMessage, .stMarkdown, .stText, .stChatMessageContent {
-    background: rgba(35, 42, 54, 0.92) !important;
-    border-radius: 16px !important;
-    box-shadow: 0 4px 24px 0 rgba(0,180,216,0.13);
-    backdrop-filter: blur(8px);
-    border: 1.5px solid #00b4d822;
-    padding: 1.5em 2em !important;
-    margin-bottom: 1.2em !important;
-    color: #e0e6ed !important;
-    font-family: 'JetBrains Mono', 'Consolas', 'Arial', sans-serif;
-}
-
-/* 聊天输入框美化 */
-.stChatInputContainer, .stTextInput, .stTextArea, .stTextInput>div>input, .stTextArea>div>textarea {
-    background: rgba(35, 42, 54, 0.98) !important;
-    border-radius: 12px !important;
-    border: 1.5px solid #00b4d833 !important;
-    box-shadow: 0 0 8px #00b4d822;
-    color: #e0e6ed !important;
-}
-
-/* 科技感标题字体和发光 */
-h1, h2, h3, h4 {
-    color: #00b4d8 !important;
-    letter-spacing: 1.5px;
-    font-family: 'Orbitron', 'Consolas', 'Arial', sans-serif;
-    text-shadow: 0 0 8px #00b4d866, 0 0 2px #fff;
-}
-
-/* 按钮动效 */
-.stButton>button {
-    background: linear-gradient(90deg, #00b4d8 0%, #005bea 100%);
-    color: #fff;
-    border: none;
-    border-radius: 10px;
-    font-weight: bold;
-    font-size: 1.1em;
-    box-shadow: 0 0 12px #00b4d844;
-    transition: 0.2s, box-shadow 0.3s;
-}
-.stButton>button:hover {
-    background: linear-gradient(90deg, #005bea 0%, #00b4d8 100%);
-    color: #fff;
-    box-shadow: 0 0 24px #00b4d8;
-    transform: scale(1.05);
-}
-
-/* 滑块美化 */
-.stSlider>div>div {
-    background: #232a36 !important;
-    border-radius: 8px;
-}
-
-/* 炫彩分割线 */
-hr {
-    border: none;
-    border-top: 2.5px solid;
-    border-image: linear-gradient(90deg, #00b4d8, #005bea, #00b4d8) 1;
-    margin: 2em 0;
-}
-
-/* 滚动条 */
-::-webkit-scrollbar-thumb {
-    background: linear-gradient(90deg, #00b4d8 0%, #005bea 100%);
-    border-radius: 8px;
-}
-
-/* 图标动画 */
-.icon-glow {
-    filter: drop-shadow(0 0 8px #00b4d8cc);
-    animation: iconGlow 2s infinite alternate;
-}
-@keyframes iconGlow {
-    0% { filter: drop-shadow(0 0 8px #00b4d8cc);}
-    100% { filter: drop-shadow(0 0 24px #00b4d8);}
-}
-</style>
-<link href="https://fonts.googleapis.com/css?family=Orbitron:700&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css?family=JetBrains+Mono:400,700&display=swap" rel="stylesheet">
-""", unsafe_allow_html=True)
-
-# ====== 页面内容 ======
-st.markdown("""
-<div style="font-size:2.2em; font-family:Orbitron,Arial,sans-serif; color:#00eaff; text-align:center; margin-bottom:0.2em; letter-spacing:2px;">
-    <span class="icon-glow">🤖</span> AI虚假新闻检测器
-</div>
-<div style="font-size:1.2em; color:#e0e6ed; background:rgba(0,234,255,0.10); border-radius:14px; padding:1.2em 2em; margin-bottom:1.5em; border:1.5px solid #00eaff33;">
-    <b>本应用程序基于 <span style="color:#00eaff;">蓝心大模型（vivo BlueLM）</span>，融合多源证据，智能验证新闻真伪。<br>
-    <span style="color:#00eaff;">输入新闻内容，系统将自动检索网络与本地知识库，输出权威核查结论。</span></b>
-</div>
-""", unsafe_allow_html=True)
+本应用程序使用蓝心大模型（vivo BlueLM）验证陈述的准确性。
+请在下方输入需要核查的新闻，系统将检索网络证据进行新闻核查，无网络时将只进行本地知识库检索。
+""")
 
 with st.sidebar:
-    st.header("⚙️ 配置")
+    st.header("配置")
     model_option = st.selectbox(
         "选择模型",
         ["vivo-BlueLM-TB-Pro", "vivo-BlueLM-TB"],
@@ -510,17 +376,14 @@ with st.sidebar:
                                help="较低的值使响应更确定，较高的值使响应更具创造性")
         max_tokens = st.slider("最大响应长度", min_value=100, max_value=8000, value=1000, step=100,
                               help="响应中的最大标记数")
-    st.markdown("""---""")
-    st.markdown("""
-    <div style="color:#00eaff; font-weight:bold;">关于</div>
-    <ul style="color:#e0e6ed;">
-        <li>🔹 从新闻中提取核心声明</li>
-        <li>🔹 多源检索网络与本地证据</li>
-        <li>🔹 BGE-M3模型智能相关性排序</li>
-        <li>🔹 依据证据自动推理结论</li>
-    </ul>
-    <div style="color:#00eaff;">LLM + Streamlit + BGE-M3 + RAG</div>
-    """, unsafe_allow_html=True)
+    st.divider()
+    st.markdown("### 关于 ###")
+    st.markdown("虚假新闻检测器:")
+    st.markdown("1. 从新闻中提取核心声明")
+    st.markdown("2. 在网络上和本地库搜索证据")
+    st.markdown("3. 使用BGE-M3按相关性对证据进行排名")
+    st.markdown("4. 基于证据提供结论")
+    st.markdown("使用LLM、Streamlit、BGE-M3和RAG开发 ❤️❤️❤️")
 
 if 'messages' not in st.session_state:
     st.session_state.messages = []
@@ -535,26 +398,40 @@ if user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.chat_message("user"):
         st.markdown(user_input)
+    assistant_message = st.chat_message("assistant")
+    claim_placeholder = assistant_message.empty()
+    information_placeholder = assistant_message.empty()
+    evidence_placeholder = assistant_message.empty()
+    verdict_placeholder = assistant_message.empty()
 
     fact_checker = FactChecker(model=model_option, temperature=temperature, max_tokens=max_tokens)
 
-    # 直接生成所有内容
+    claim_placeholder.markdown("### 🔍 正在提取新闻的核心声明...")
     claim = fact_checker.extract_claim(user_input)
     if "claim:" in claim.lower():
         claim = claim.split("claim:")[-1].strip()
+    claim_placeholder.markdown(f"### 🔍 提取新闻的核心声明\n\n{claim}")
 
+    information_placeholder.markdown(f"### 🔍 正在提取新闻的关键信息...")
     information = fact_checker.extract_keyinformation(user_input)
+    information_placeholder.markdown(f"### 🔍 提取新闻的关键信息\n\n{information}")
 
+    evidence_placeholder.markdown("### 🌐 正在搜索相关证据...")
     evidence_docs = fact_checker.search_evidence(claim)
+
+    evidence_placeholder.markdown("### 🌐 正在分析证据相关性...")
     evidence_chunks = fact_checker.get_evidence_chunks(evidence_docs, claim)
 
     evidence_md = "### 🔗 证据来源\n\n"
-    for j, chunk in enumerate(evidence_chunks):
+    for j, chunk in enumerate(evidence_chunks[:-1]):
         evidence_md += f"**[{j+1}]:**\n"
         evidence_md += f"{chunk['text']}\n"
         evidence_md += f"来源: {chunk['source']}\n\n"
+    evidence_placeholder.markdown(evidence_md)
 
+    verdict_placeholder.markdown("### ⚖️ 正在评估声明真实性...")
     evaluation = fact_checker.evaluate_claim(information, user_input, evidence_chunks)
+
     verdict = evaluation["verdict"]
     if verdict.upper() == "TRUE":
         emoji = "✅"
@@ -571,6 +448,7 @@ if user_input:
 
     verdict_md = f"### {emoji} 结论: {verdict_cn}\n\n"
     verdict_md += f"### 推理过程\n\n{evaluation['reasoning']}\n\n"
+    verdict_placeholder.markdown(verdict_md)
 
     full_response = f"""
 ### 🔍 提取新闻的核心声明
