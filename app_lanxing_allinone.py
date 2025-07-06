@@ -404,8 +404,8 @@ st.markdown("""
     100% {background-position: 0% 50%;}
 }
 
-/* 玻璃拟态卡片和内容区 */
-.st-emotion-cache-1v0mbdj, .st-emotion-cache-1kyxreq, .stChatMessage, .stMarkdown, .stText, .stChatMessageContent {
+/* 玻璃拟态卡片和内容区，仅保留稳定类名 */
+.stChatMessage, .stMarkdown, .stText, .stChatMessageContent {
     background: rgba(35, 42, 54, 0.92) !important;
     border-radius: 16px !important;
     box-shadow: 0 4px 24px 0 rgba(0,180,216,0.13);
